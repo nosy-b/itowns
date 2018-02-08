@@ -188,10 +188,11 @@ function readGeometry(crsIn, crsOut, json, filteringExtent, options) {
 }
 
 function readFeature(crsIn, crsOut, json, filteringExtent, options) {
-    if (options.filter && !options.filter(json.properties)) {
+    const feature = {};
+
+    if (options.filter && !options.filter(json.properties, json.geometry)) {
         return;
     }
-    const feature = {};
     feature.geometry = readGeometry(crsIn, crsOut, json.geometry, filteringExtent, options);
 
     if (!feature.geometry) {

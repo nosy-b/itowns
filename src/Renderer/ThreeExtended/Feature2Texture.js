@@ -20,6 +20,17 @@ function drawPolygon(ctx, vertices, contour, holes, origin, dimension, propertie
     if (vertices.length === 0) {
         return;
     }
+    if (style.length) {
+        for (const s of style) {
+            _drawPolygon(ctx, vertices, contour, holes, origin, dimension, properties, s);
+        }
+    } else {
+        _drawPolygon(ctx, vertices, contour, holes, origin, dimension, properties, style);
+    }
+}
+
+const scale = new THREE.Vector2();
+function _drawPolygon(ctx, vertices, contour, holes, origin, dimension, properties, style) {
     // compute scale transformation extent to canvas
     //
     const scale = new THREE.Vector2(ctx.canvas.width / dimension.x, ctx.canvas.width / dimension.y);
@@ -70,7 +81,7 @@ function drawPolygon(ctx, vertices, contour, holes, origin, dimension, propertie
 }
 
 function drawPoint(ctx, vertice, origin, dimension, style = {}) {
-    const scale = new THREE.Vector2(ctx.canvas.width / dimension.x, ctx.canvas.width / dimension.y);
+    scale.set(ctx.canvas.width / dimension.x, ctx.canvas.width / dimension.y);
     pt.x = vertice._values[0] - origin.x;
     pt.y = vertice._values[1] - origin.y;
     pt.multiply(scale);
@@ -86,6 +97,11 @@ function drawPoint(ctx, vertice, origin, dimension, style = {}) {
 
 function _drawFeatureGeometry(ctx, feature, geometry, origin, dimension, extent, style) {
     const properties = feature.properties;
+
+    if (typeof (style) == 'function') {
+        style = style(properties, feature);
+    }
+
     if (geometry.type === 'point') {
         drawPoint(ctx, geometry.vertices[0], origin, dimension, style);
     } else if (geometry.extent.intersectsExtent(extent)) {
@@ -115,7 +131,6 @@ export default {
         c.width = sizeTexture;
         c.height = sizeTexture;
         const ctx = c.getContext('2d');
-
         // Draw the canvas
         if (Array.isArray(features)) {
             for (let i = 0; i < features.length; i++) {
@@ -124,7 +139,6 @@ export default {
         } else {
             drawFeature(ctx, features, origin, dimension, extent, style);
         }
-
         const texture = new THREE.Texture(c);
         texture.flipY = false;
         texture.generateMipmaps = false;

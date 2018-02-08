@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import OGCWebServiceHelper from './OGCWebServiceHelper';
 import URLBuilder from './URLBuilder';
 import Extent from '../Core/Geographic/Extent';
+import VectorTileHelper from './VectorTileHelper';
 
 function preprocessDataLayer(layer) {
     if (!layer.extent) {
@@ -25,30 +26,54 @@ function preprocessDataLayer(layer) {
     }
 }
 
+function getVectorTile(tile, coords, layer) {
+    const url = URLBuilder.xyz(coords, layer);
+
+    if (layer.type == 'color') {
+        return VectorTileHelper.getVectorTileTextureByUrl(url, tile, layer, coords)
+            .then((result) => {
+                if (!result) return;
+
+                result.texture.coords = coords;
+                return result;
+            });
+    } else if (layer.type == 'geometry') {
+        return VectorTileHelper.getVectorTileMeshByUrl(url, tile, layer, coords);
+    }
+}
+
 function executeCommand(command) {
     const layer = command.layer;
     const tile = command.requester;
-
     const promises = [];
+    const supportedFormats = {
+        'application/x-protobuf;type=mapbox-vector': getVectorTile.bind(this),
+    };
+    const func = supportedFormats[layer.options.mimetype];
+
     for (const coordTMS of tile.getCoordsForLayer(layer)) {
-        const coordTMSParent = (command.targetLevel < coordTMS.zoom) ?
-            OGCWebServiceHelper.WMTS_WGS84Parent(coordTMS, command.targetLevel) :
-            undefined;
+        if (func) {
+            promises.push(func(tile, coordTMS, layer));
+        } else {
+            const coordTMSParent = (command.targetLevel < coordTMS.zoom) ?
+                OGCWebServiceHelper.WMTS_WGS84Parent(coordTMS, command.targetLevel) :
+                undefined;
 
-        const urld = URLBuilder.xyz(coordTMSParent || coordTMS, layer);
+            const urld = URLBuilder.xyz(coordTMSParent || coordTMS, layer);
 
-        promises.push(OGCWebServiceHelper.getColorTextureByUrl(urld, layer.networkOptions).then((texture) => {
-            const result = {};
-            result.texture = texture;
-            result.texture.coords = coordTMSParent || coordTMS;
-            result.pitch = coordTMSParent ?
-                coordTMS.offsetToParent(coordTMSParent) :
-                new THREE.Vector4(0, 0, 1, 1);
-            if (layer.transparent) {
-                texture.premultiplyAlpha = true;
-            }
-            return result;
-        }));
+            promises.push(OGCWebServiceHelper.getColorTextureByUrl(urld, layer.networkOptions).then((texture) => {
+                const result = {};
+                result.texture = texture;
+                result.texture.coords = coordTMSParent || coordTMS;
+                result.pitch = coordTMSParent ?
+                    coordTMS.offsetToParent(coordTMSParent) :
+                    new THREE.Vector4(0, 0, 1, 1);
+                if (layer.transparent) {
+                    texture.premultiplyAlpha = true;
+                }
+                return result;
+            }));
+        }
     }
     return Promise.all(promises);
 }
