@@ -117,5 +117,34 @@ globeView.addLayer({
     }, globeView.tileLayer);
 });
 
+
+function orientedImagesInit(orientedImages) {
+    var i;
+    var ori;
+    var axis;
+    var listOrientation;
+    var quaternion = new itowns.THREE.Quaternion();
+    var coordView = new itowns.Coordinates(globeView.referenceCrs, 0, 0, 0);
+
+    listOrientation = itowns.OrientedImageDecoder.decode(orientedImages, itowns.micMacConvert);
+
+    for (i = 0; i < listOrientation.length; i++) {
+        ori = listOrientation[i];
+        axis = new itowns.THREE.AxesHelper(1);
+        ori.coord.as(globeView.referenceCrs, coordView);
+        axis.position.copy(coordView.xyz());
+        axis.lookAt(coordView.geodesicNormal.add(axis.position));
+        quaternion.setFromEuler(ori.orientation);
+        axis.quaternion.multiply(quaternion);
+
+        axis.updateMatrixWorld();
+        globeView.scene.add(axis);
+    }
+}
+
+itowns.Fetcher.json('http://www.itowns-project.org/itowns-sample-data/panoramicsMetaData.json',
+{ crossOrigin: '' }).then(orientedImagesInit);
+
+
 exports.view = globeView;
 exports.initialPosition = positionOnGlobe;
