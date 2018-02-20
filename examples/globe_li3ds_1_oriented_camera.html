@@ -1,0 +1,129 @@
+<html>
+    <head>
+        <title>Itowns - Globe + WFS</title>
+
+        <style type="text/css">
+            html {
+                height: 100%;
+            }
+
+            body {
+                margin: 0;
+                overflow:hidden;
+                height:100%;
+            }
+
+            #viewerDiv {
+                margin : auto auto;
+                width: 100%;
+                height: 100%;
+                padding: 0;
+            }
+            #menuDiv {
+                position: absolute;
+                top:0px;
+                margin-left: 0px;
+            }
+            @media (max-width: 600px) {
+                #menuDiv {
+                    display: none;
+                }
+            }
+        </style>
+        <meta charset="UTF-8">
+
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <script src="js/GUI/dat.gui/dat.gui.min.js"></script>
+    </head>
+    <body>
+        <div id="viewerDiv"></div>
+        <!--script type="text/javascript">
+            viewerDiv.addEventListener('keydown', function (evt) { console.log(evt); });
+        </script-->
+        <script src="js/GUI/GuiTools.js"></script>
+        <script src="../dist/itowns.js"></script>
+        <script src="../dist/debug.js"></script>
+        <script type="text/javascript">
+            var renderer;
+            var exports = {};
+        </script>
+        <script src="globe_li3ds_1_oriented_camera.js"></script>
+        <script type="text/javascript">
+            /* global itowns, document, GuiTools, globeView, promises */
+            var menuGlobe = new GuiTools('menuDiv');
+            menuGlobe.view = globeView;
+            // Listen for globe full initialisation event
+            globeView.addEventListener(itowns.GLOBE_VIEW_EVENTS.GLOBE_INITIALIZED, function () {
+                // eslint-disable-next-line no-console
+                console.info('Globe initialized');
+                Promise.all(promises).then(function () {
+                    menuGlobe.addImageryLayersGUI(globeView.getLayers(function (l) { return l.type === 'color'; }));
+                    menuGlobe.addElevationLayersGUI(globeView.getLayers(function (l) { return l.type === 'elevation'; }));
+                    // globeView.controls.setCameraToCurrentPano();
+                    // // globeView.controls.setTilt(75, true);
+                    // addMeshToScene();
+                    for (const layer of globeView.getLayers()) {
+                        if (layer.id === 'WFS Buildings') {
+                            layer.whenReady.then( function _(layer) {
+                                var gui = debug.GeometryDebug.createGeometryDebugUI(menuGlobe.gui, globeView, layer);
+                                debug.GeometryDebug.addWireFrameCheckbox(gui, globeView, layer);
+                            });
+                        }
+                    }
+                });
+                var orientedImageGUI = menuGlobe.gui.addFolder('Oriented Image');
+                orientedImageGUI.add({ camToScene: false }, 'camToScene').onChange(function switchMode(value) {
+                    globeView.controls.setCameraTargetPosition(layer.orientationConvention.position);
+                    globeView.notifyChange(true);
+                });
+                orientedImageGUI.add({ cameraToImage: false }, 'cameraToImage').onChange(function switchMode(value) {
+                    globeView.camera.camera3D.position.copy(layer.orientationConvention.position);
+                    globeView.notifyChange(true);
+                });
+                orientedImageGUI.add(layer, 'cameraFOV', 0, 120).name('Camera FOV').onChange( function opacityChange(value) {
+                    globeView.camera.camera3D.fov = value;
+                    globeView.camera.camera3D.updateProjectionMatrix();
+                    globeView.notifyChange(true);
+                });
+                // orientedImageGUI.add(layer, 'focaleReel', 0, 12000).name('Image Distance').onChange( function opacityChange(value) {
+                orientedImageGUI.add(layer, 'focaleReel', 0, 12).name('Image Distance').onChange( function opacityChange(value) {
+                    layer.focaleReel = value;
+                    updatePlanePositionAndScale();
+                    globeView.notifyChange(true);
+                });
+                orientedImageGUI.add(layer, 'opacity', 0, 1).name('Opacity').onChange( function opacityChange(value) {
+                    layer.plane.material.opacity = value;
+                    globeView.notifyChange(true);
+                });
+                orientedImageGUI.add(layer, 'convergence', -5, 5).name('Convergence').onChange( function convergenceChange(value) {
+                    layer.convergence = value;
+                    updateOrientationConvention();
+                    globeView.notifyChange(true);
+                });
+                orientedImageGUI.add(layer, 'debugScale', 0, 10).name('debug scale').onChange( function convergenceChange(value) {
+                    layer.debugScale = value;
+                    updatePlanePositionAndScale();
+                    globeView.notifyChange(true);
+                });
+                orientedImageGUI.add({ orientedNord: false }, 'orientedNord').onChange(function switchMode(value) {
+                    layer.orientedNord = value;
+                    updateOrientationConvention();
+                    globeView.notifyChange(true);
+                    layer.camera.updateMatrixWorld(true);
+                    layer.cameraHelper.updateMatrixWorld(true);
+                });
+                orientedImageGUI.add({ micmac: false }, 'micmac').onChange(function switchMode(value) {
+                    layer.micmac = value;
+                    updateAxisOrientation();
+                    globeView.notifyChange(true);
+                    layer.camera.updateMatrixWorld(true);
+                    layer.cameraHelper.updateMatrixWorld(true);
+                });
+            
+            });         
+
+            const d = new debug.Debug(globeView, menuGlobe.gui);
+            debug.createTileDebugUI(menuGlobe.gui, globeView, globeView.wgs84TileLayer, d);
+        </script>
+    </body>
+</html>
