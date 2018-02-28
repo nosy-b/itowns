@@ -219,7 +219,6 @@ export function updateLayeredMaterialNodeImagery(context, layer, node) {
         return;
     }
 
-
     // does this tile needs a new texture?
     if (layer.canTileTextureBeImproved) {
         // if the layer has a custom method -> use it
@@ -238,10 +237,19 @@ export function updateLayeredMaterialNodeImagery(context, layer, node) {
         return;
     }
 
+    const failureParams = node.layerUpdateState[layer.id].lastFailureParams();
     const currentLevel = node.material.getColorLayerLevelById(layer.id);
-    const zoom = node.getCoordsForLayer(layer)[0].zoom || node.level;
-    const targetLevel = chooseNextLevelToFetch(layer.updateStrategy.type, node, zoom, currentLevel, layer);
+    const nodeLevel = node.getCoordsForLayer(layer)[0].zoom || node.level;
+    const targetLevel = chooseNextLevelToFetch(layer.updateStrategy.type, node, nodeLevel, currentLevel, layer, failureParams);
     if (targetLevel <= currentLevel) {
+        return;
+    }
+
+    // Retry tileInsideLimit because you must check with the targetLevel
+    // if the first test layer.tileInsideLimit returns that it is out of limits
+    // and the node inherits from its parent, then it'll still make a command to fetch texture.
+    if (!layer.tileInsideLimit(node, layer, targetLevel)) {
+        node.layerUpdateState[layer.id].noMoreUpdatePossible();
         return;
     }
 
@@ -273,7 +281,6 @@ export function updateLayeredMaterialNodeImagery(context, layer, node) {
             }
 
             node.layerUpdateState[layer.id].success();
-
             return result;
         },
         (err) => {
@@ -283,13 +290,12 @@ export function updateLayeredMaterialNodeImagery(context, layer, node) {
                 if (__DEBUG__) {
                     console.warn('Imagery texture update error for', node, err);
                 }
+
                 const definitiveError = node.layerUpdateState[layer.id].errorCount > MAX_RETRY;
-                node.layerUpdateState[layer.id].failure(Date.now(), definitiveError);
-                if (!definitiveError) {
-                    window.setTimeout(() => {
-                        context.view.notifyChange(false, node);
-                    }, node.layerUpdateState[layer.id].secondsUntilNextTry() * 1000);
-                }
+                node.layerUpdateState[layer.id].failure(Date.now(), definitiveError, { targetLevel });
+                window.setTimeout(() => {
+                    context.view.notifyChange(false, node);
+                }, node.layerUpdateState[layer.id].secondsUntilNextTry() * 1000);
             }
         });
 }
