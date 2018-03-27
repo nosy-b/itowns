@@ -41,4 +41,5 @@ export { default as FeaturesUtils } from './Renderer/ThreeExtended/FeaturesUtils
 export { CONTROL_EVENTS } from './Renderer/ThreeExtended/GlobeControls';
 export { default as DEMUtils } from './utils/DEMUtils';
 export { default as OrientedImageDecoder, micMacConvert } from './Core/OrientedImageDecoder';
+export { default as OrientedImageHelper } from './Core/OrientedImageHelper';
 export { default as format } from 'string-format';

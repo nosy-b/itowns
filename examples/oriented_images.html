@@ -1,0 +1,142 @@
+<html>
+    <head>
+        <title>Itowns - Globe + WFS</title>
+
+        <style type="text/css">
+            html {
+                height: 100%;
+            }
+
+            body {
+                margin: 0;
+                overflow:hidden;
+                height:100%;
+            }
+
+            #viewerDiv {
+                margin : auto auto;
+                width: 100%;
+                height: 100%;
+                padding: 0;
+            }
+            #menuDiv {
+                position: absolute;
+                top:0px;
+                margin-left: 0px;
+            }
+            #info {
+                color: black;
+                position: absolute;
+                bottom: 0;
+                right: 0;
+                margin-right: 15px;
+                padding: 0.3rem;
+                background-color: rgba(255, 255, 255, 0.493);
+                border: 2px solid black;
+                border-radius: 5px;
+            }
+            @media (max-width: 600px) {
+                #menuDiv {
+                    display: none;
+                }
+            }
+        </style>
+        <meta charset="UTF-8">
+
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <script src="js/GUI/dat.gui/dat.gui.min.js"></script>
+    </head>
+    <body>
+        <div id="viewerDiv">
+            <p id="info">
+                Picture taken by Walter Mittelholzer in 1919, metadata from 
+                <a href="https://smapshot.heig-vd.ch/map/?imageId=2873" target="_blank"> smapshot.heig-vd.ch </a>
+            </p>
+        </div>
+        <!--script type="text/javascript">
+            viewerDiv.addEventListener('keydown', function (evt) { console.log(evt); });
+        </script-->
+        <script src="js/GUI/GuiTools.js"></script>
+        <script src="../dist/itowns.js"></script>
+        <script src="../dist/debug.js"></script>
+        <script type="text/javascript">
+            var renderer;
+            var exports = {};
+        </script>
+        <script src="oriented_images.js"></script>
+        <script type="text/javascript">
+            /* global itowns, document, GuiTools, globeView, promises */
+            var menuGlobe = new GuiTools('menuDiv');
+            menuGlobe.view = globeView;
+            // Listen for globe full initialisation event
+            globeView.addEventListener(itowns.GLOBE_VIEW_EVENTS.GLOBE_INITIALIZED, function () {
+                // eslint-disable-next-line no-console
+                console.info('Globe initialized');
+                Promise.all(promises).then(function () {
+                    menuGlobe.addImageryLayersGUI(globeView.getLayers(function (l) { return l.type === 'color'; }));
+                    menuGlobe.addElevationLayersGUI(globeView.getLayers(function (l) { return l.type === 'elevation'; }));
+                    // globeView.controls.setCameraToCurrentPano();
+                    // // globeView.controls.setTilt(75, true);
+                    // addMeshToScene();
+                    for (const layer of globeView.getLayers()) {
+                        if (layer.id === 'WFS Buildings') {
+                            layer.whenReady.then( function _(layer) {
+                                var gui = debug.GeometryDebug.createGeometryDebugUI(menuGlobe.gui, globeView, layer);
+                                debug.GeometryDebug.addWireFrameCheckbox(gui, globeView, layer);
+                            });
+                        }
+                    }
+                });
+            
+            });         
+
+
+            var orientedImageGUI = menuGlobe.gui.addFolder('Oriented Images');       
+            orientedImageGUI.add({ fov: 30 }, 'fov', 0, 120).name('Camera FOV').onChange( function opacityChange(value) {
+                globeView.camera.camera3D.fov = value;
+                globeView.camera.camera3D.updateProjectionMatrix();
+                globeView.notifyChange(true);
+            });
+            var orientedImageGUI_IGN = menuGlobe.gui.addFolder('Oriented Image Li3DS');
+            orientedImageGUI_IGN.add({ camToImage1: false }, 'camToImage1').name('camera').onChange(function switchMode(value) {
+                globeView.camera.camera3D.position.copy(layerIGN.axis.position);
+                globeView.notifyChange(true);
+            });
+            orientedImageGUI_IGN.add(layerIGN, 'distance', 0, 12).name('Image Distance').onChange( function opacityChange(value) {
+                layerIGN.distance = value;
+                updatePlanePositionAndScale(layerIGN);
+                globeView.notifyChange(true);
+            });
+            orientedImageGUI_IGN.add(layerIGN, 'opacity', 0, 1).name('Opacity').onChange( function opacityChange(value) {
+                layerIGN.plane.material.opacity = value;
+                globeView.notifyChange(true);
+            });
+            orientedImageGUI_IGN.add(layerIGN, 'orientation', 0, 1).name('orientation').onChange( function opacityChange(value) {
+                layerIGN.orientation = value;
+                computeOrientation(layerIGN);
+                globeView.notifyChange(true);
+            });
+            var orientedImageGUI_MontBlanc = menuGlobe.gui.addFolder('Oriented Image Mont Blanc');
+            orientedImageGUI_MontBlanc.add({ camToImage2: false }, 'camToImage2').name('camera').onChange(function switchMode(value) {
+                globeView.camera.camera3D.position.copy(layerMontBlanc.axis.position);
+                globeView.notifyChange(true);
+            });
+            orientedImageGUI_MontBlanc.add(layerMontBlanc, 'distance', 0, 12000).name('Image Distance').onChange( function opacityChange(value) {
+                layerMontBlanc.distance = value;
+                updatePlanePositionAndScale(layerMontBlanc);
+                globeView.notifyChange(true);
+            });
+            orientedImageGUI_MontBlanc.add(layerMontBlanc, 'opacity', 0, 1).name('Opacity').onChange( function opacityChange(value) {
+                layerMontBlanc.plane.material.opacity = value;
+                globeView.notifyChange(true);
+            });
+            orientedImageGUI_MontBlanc.add(layerIGN, 'orientation', 0, 1).name('orientation').onChange( function opacityChange(value) {
+                layerMontBlanc.orientation = value;
+                computeOrientation(layerMontBlanc);
+                globeView.notifyChange(true);
+            });
+            const d = new debug.Debug(globeView, menuGlobe.gui);
+            debug.createTileDebugUI(menuGlobe.gui, globeView, globeView.wgs84TileLayer, d);
+        </script>
+    </body>
+</html>
