@@ -80,6 +80,35 @@ function View(crs, viewerDiv, options = {}) {
         this.notifyChange(true);
     }, false);
 
+    viewerDiv.addEventListener('drop', (e) => {
+        e.preventDefault();
+        var files = e.dataTransfer.files;
+        for (var i = 0; i < files.length; i++) {
+            const file = files[i];
+            const format = file.type || file.name.split('.').pop().toLowerCase();
+            const parser = this.mainLoop.scheduler.getFormatParser(format);
+            if (!parser)
+            {
+                // eslint-disable-next-line no-console
+                console.warn('no parser for file', file, 'with format', format);
+                continue;
+            }
+            const reader = new FileReader();
+            reader.addEventListener('load', () => {
+                parser.parse(reader.result, { crs: this.referenceCrs }).then((parsed) => {
+                    if (parsed) {
+                        this.scene.add(parsed);
+                    }
+                });
+            }, false);
+            reader.readAsBinaryString(file);
+        }
+    }, false);
+    const prevDefault = e => e.preventDefault();
+    viewerDiv.addEventListener('dragenter', prevDefault, false);
+    viewerDiv.addEventListener('dragover', prevDefault, false);
+    viewerDiv.addEventListener('dragleave', prevDefault, false);
+
     this._changeSources = new Set();
 
     if (__DEBUG__) {
