@@ -49,8 +49,7 @@
         <script src="globe_wfs_extruded.js"></script>
         <script type="text/javascript">
             /* global itowns, document, GuiTools, globeView, promises */
-            var menuGlobe = new GuiTools('menuDiv');
-            menuGlobe.view = globeView;
+            var menuGlobe = new GuiTools('menuDiv', globeView);
             // Listen for globe full initialisation event
             globeView.addEventListener(itowns.GLOBE_VIEW_EVENTS.GLOBE_INITIALIZED, function () {
                 // eslint-disable-next-line no-console
@@ -60,7 +59,7 @@
                     menuGlobe.addElevationLayersGUI(globeView.getLayers(function (l) { return l.type === 'elevation'; }));
 
                     globeView.controls.setTilt(45, true);
-                });
+                }).catch(console.error);
             });
             const d = new debug.Debug(globeView, menuGlobe.gui);
             debug.createTileDebugUI(menuGlobe.gui, globeView, globeView.wgs84TileLayer, d);
