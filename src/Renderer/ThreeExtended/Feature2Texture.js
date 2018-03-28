@@ -89,7 +89,6 @@ function _drawFeatureGeometry(ctx, feature, geometry, origin, dimension, extent,
     if (geometry.type === 'point') {
         drawPoint(ctx, geometry.vertices[0], origin, dimension, style);
     } else if (geometry.extent.intersectsExtent(extent)) {
-        ctx.globalCompositeOperation = 'destination-over';
         drawPolygon(ctx, geometry.vertices, geometry.contour, geometry.holes, origin, dimension, properties, style);
     }
 }
